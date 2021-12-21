@@ -8,9 +8,10 @@ from GameBoard import GameBoard
 from ToolsMenu import ToolsMenu
 from Materials import *
 
+
 class Game:
 
-    def __init__(self, width = 800, height = 800):
+    def __init__(self, width=1920, height=1080):
         self.cell_size = 20
         self.width = width
         self.height = height
@@ -19,17 +20,18 @@ class Game:
         self.fps = 150
         self.fps_count = 0
 
-        self.material_menu = MaterialMenu(parent = self)
-        self.tools_menu = ToolsMenu(parent = self)
+        self.material_menu = MaterialMenu(parent=self)
+        self.tools_menu = ToolsMenu(parent=self)
 
-        self.game_board = GameBoard(parent = self, width = 40, height = 40)
-        self.game_board.set_view(0, 0, self.cell_size)
+        self.game_board = GameBoard(parent=self, width=50, height=20)
+        self.game_board.set_view(100, 100, self.cell_size)
+
+        self.choosed_material = WaterMaterial
 
     def update(self):
         self.material_menu.update()
         self.tools_menu.update()
         self.game_board.update()
-
 
     def mainloop(self):
         pygame.init()
@@ -38,7 +40,7 @@ class Game:
 
         # Событие обновления
         UPDATE = pygame.USEREVENT + 1
-        pygame.time.set_timer(UPDATE, 40)
+        pygame.time.set_timer(UPDATE, 50)
 
         running = True
         left_mouse_button_pressed = False
@@ -61,7 +63,8 @@ class Game:
                         self.game_board.get_click(event.pos)
                         self.tools_menu.get_click(event.pos)
                         self.material_menu.get_click(event.pos)
-
+                    if event.button == 3:
+                        self.choosed_material = WaterMaterial if self.choosed_material is SandMaterial else SandMaterial
                 if event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
                         # ЛКМ отжата
@@ -75,6 +78,8 @@ class Game:
                 if event.type == UPDATE:
                     # Событие на обновление
                     self.update()
+                    self.render()
+
                 if event.type == pygame.MOUSEWHEEL:
                     self.game_board.on_mousewheel(event.y)
                     self.tools_menu.on_mousewheel(event.y)
@@ -90,6 +95,7 @@ class Game:
         self.game_board.render(self.screen)
         self.tools_menu.render(self.screen)
         self.material_menu.render(self.screen)
+
 
 if __name__ == '__main__':
     game = Game()

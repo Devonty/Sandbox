@@ -6,8 +6,11 @@ class Material:
 
     def __init__(self):
         self.color_list = list()
-        self.color = rd.choice(self.color_list)
+        self.color = (0,0,0)
         self.gravity = 0 # 0 - no gravity, 1 - down, 2 - up (gas)
+        self.weight = 0
+        self.like_dust = False
+        self.like_water = False
         self.temperature = 0
         self.temperature_to_fire = None
 
@@ -24,11 +27,31 @@ class Material:
         size = (x, y, cell_size, cell_size)
         pygame.draw.rect(screen, self.color, size)
 
+class Expamle(Material):
+
+    def __init__(self):
+        super().__init__()
+
+
+
 class SandMaterial(Material):
 
     def __init__(self):
+        super().__init__()
         self.color_list = [(255, 255, 0), (200, 200, 10)]
         self.color = rd.choice(self.color_list)
         self.gravity = 1 # 0 - no gravity, 1 - down, 2 - up (gas)
+        self.weight = 1600
+        self.like_dust = True
         self.temperature = 0
         self.temperature_to_fire = None
+
+class WaterMaterial(Material):
+
+    def __init__(self):
+        super().__init__()
+        self.like_water = True
+        self.weight = 1000
+        self.color_list = [(0, 0, 205), (0, 0, 139)]
+        self.color = rd.choice(self.color_list)
+        self.gravity = 1

@@ -1,6 +1,7 @@
 import pygame
 import math
 import random
+import numpy as np
 from copy import deepcopy
 from Materials import *
 
@@ -42,12 +43,15 @@ class GameBoard:
 
         # значения по умолчанию
         self.paused = False
-        self.gravity_direction = 1 # Up - 0, Right - 1, Down - 2, Left - 3
+        self.gravity_direction = 1  # Up - 0, Right - 1, Down - 2, Left - 3
         self.left = 10
         self.top = 10
         self.fps_count = 0
         self.board = [[Cell(material=None) for _ in range(width)] for _ in range(height)]
         self.screen = None
+
+        self.X = [0, 1, 1, 1, 0, -1, -1, -1]
+        self.Y = [-1, -1, 0, 1, 1, 1, 0, -1]
 
     def on_mousewheel(self, event_y):
         self.gravity_direction = (self.gravity_direction + event_y) % 4
@@ -88,7 +92,6 @@ class GameBoard:
         pole = self.board
         tmp_pole = deepcopy(self.board)
 
-
         for i in range(self.height):
             for j in range(self.width):
                 cell = pole[i][j]
@@ -100,12 +103,15 @@ class GameBoard:
 
                 gravity = cell.material.gravity
                 if gravity:
-                    cur = (self.gravity_direction + max(0, gravity - 1) * 2) % 4
-                    X = [0, 1, 0, -1][cur]
-                    Y = [-1, 0, 1, 0][cur]
-                    if 0 <= i + Y < self.height and 0 <= j + X < self.width:
-                        cell_down = self.board[i + Y][j + X]
-                        tmp_cell_down = tmp_pole[i + Y][j + X]
+                    cur = ((self.gravity_direction + max(0, gravity - 1) * 2) % 4 * 2) % 8
+                    # X = [0, 1, 0, -1][cur]
+                    # Y = [-1, 0, 1, 0][cur]
+
+                    X = self.X
+                    Y = self.Y
+                    if 0 <= i + Y[cur] < self.height and 0 <= j + X[cur] < self.width:
+                        cell_down = self.board[i + Y[cur]][j + X[cur]]
+                        tmp_cell_down = tmp_pole[i + Y[cur]][j + X[cur]]
                         if cell_down.get_material() is None:
                             tmp_cell_down.set_material(material)
                             tmp_cell.clear()
@@ -123,4 +129,3 @@ class GameBoard:
         self.left = left
         self.top = top
         self.cell_size = cell_size
-

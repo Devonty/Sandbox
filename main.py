@@ -38,7 +38,7 @@ class Game:
 
         # Событие обновления
         UPDATE = pygame.USEREVENT + 1
-        pygame.time.set_timer(UPDATE, 50)
+        pygame.time.set_timer(UPDATE, 40)
 
         running = True
         left_mouse_button_pressed = False

@@ -51,6 +51,7 @@ class GameBoard:
         self.fps_count = 0
         self.board = [[Cell(material=None) for _ in range(width)] for _ in range(height)]
         self.screen = None
+        self.background_color = pygame.Color('White')
 
         self.X = CircleList([0, 1, 1, 1, 0, -1, -1, -1])
         self.Y = CircleList([-1, -1, 0, 1, 1, 1, 0, -1])
@@ -210,10 +211,8 @@ class GameBoard:
                         if cell_choosen:
                             cell_choosen = rd.choice(cell_choosen)
                             # Сдвиг
-                            cell_choosen.set_material(material)
-                            cell.clear()
-                            cell_choosen.was_moved = True
-                            was_moved_local = True
+                            was_moved_local = self.swap_cells(cell, cell_choosen)
+
                     # горизонтальный вниз
                     if not was_moved_local and material.like_water:
 
@@ -230,22 +229,44 @@ class GameBoard:
                                 cell_choosen.append(tmp)
 
                         if cell_choosen:
+                            print(len(cell_choosen))
                             cell_choosen = rd.choice(cell_choosen)
                             # Сдвиг
-                            cell_choosen.set_material(material)
-                            cell.clear()
-                            cell_choosen.was_moved = True
-                            was_moved_local = True
+                            was_moved_local = self.swap_cells(cell, cell_choosen)
+
                     # веса материалов
                     if not was_moved_local:
                         if 0 <= i + Y[cur] < self.height and 0 <= j + X[cur] < self.width:
                             cell_down = self.board[i + Y[cur]][j + X[cur]]
                             was_moved_local = self.swap_cells_by_weight(cell, cell_down)
+    
+                            # диагональный вниз
+                            if not was_moved_local and (material.like_dust or material.like_dust):
+
+                                cell_choosen = list()
+
+                                if 0 <= i + Y[cur - 1] < self.height and 0 <= j + X[
+                                    cur - 1] < self.width:
+                                    tmp = self.board[i + Y[cur - 1]][j + X[cur - 1]]
+                                    if tmp.get_material() is None:
+                                        cell_choosen.append(tmp)
+
+                                if 0 <= i + Y[cur + 1] < self.height and 0 <= j + X[
+                                    cur + 1] < self.width:
+                                    tmp = self.board[i + Y[cur + 1]][j + X[cur + 1]]
+                                    if tmp.get_material() is None:
+                                        cell_choosen.append(tmp)
+
+                                if cell_choosen:
+                                    cell_choosen = rd.choice(cell_choosen)
+                                    # Сдвиг
+                                    was_moved_local = self.swap_cells_by_weight(cell, cell_choosen)
 
         # self.board = tmp_pole
 
     def render(self, screen):
         self.screen = screen
+        pygame.draw.rect(self.screen, self.background_color, (self.left-1, self.top-1,  2 +self.width * self.cell_size,2 + self.height * self.cell_size))
         for i in range(self.height):
             for j in range(self.width):
                 cord = (j * self.cell_size + self.left, i * self.cell_size + self.top)

@@ -12,7 +12,7 @@ from Materials import *
 class Game:
 
     def __init__(self, width=1920, height=1080):
-        self.cell_size = 20
+        self.cell_size = 10
         self.width = width
         self.height = height
         self.size = (width, height)
@@ -23,15 +23,27 @@ class Game:
         self.material_menu = MaterialMenu(parent=self)
         self.tools_menu = ToolsMenu(parent=self)
 
-        self.game_board = GameBoard(parent=self, width=50, height=20)
+        self.game_board = GameBoard(parent=self, width=50, height=50)
         self.game_board.set_view(100, 100, self.cell_size)
 
-        self.choosed_material = WaterMaterial
+        self.material_cur = 0
+        self.material_list = [
+            SandMaterial,
+            WaterMaterial,
+            GasMaterial,
+        ]
+
+        self.choosed_material = self.material_list[self.material_cur]
 
     def update(self):
         self.material_menu.update()
         self.tools_menu.update()
         self.game_board.update()
+
+    def scroll_material(self):
+        self.material_cur =( self.material_cur +1) % len(self.material_list)
+        self.choosed_material = self.material_list[self.material_cur]
+
 
     def mainloop(self):
         pygame.init()
@@ -64,7 +76,8 @@ class Game:
                         self.tools_menu.get_click(event.pos)
                         self.material_menu.get_click(event.pos)
                     if event.button == 3:
-                        self.choosed_material = WaterMaterial if self.choosed_material is SandMaterial else SandMaterial
+                        self.scroll_material()
+                        #self.choosed_material = WaterMaterial if self.choosed_material is SandMaterial else SandMaterial
                 if event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
                         # ЛКМ отжата

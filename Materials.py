@@ -5,14 +5,14 @@ import pygame
 class Material:
 
     def __init__(self):
-        self.color_list = list()
-        self.color = (0,0,0)
+        self.color_list = list((0,0,0)) # Список цветов
+        self.color = rd.choice(self.color_list) # случайный цвет
         self.gravity = 0 # 0 - no gravity, 1 - down, 2 - up (gas)
-        self.weight = 0
-        self.like_dust = False
-        self.like_water = False
-        self.temperature = 0
-        self.temperature_to_fire = None
+        self.weight = 0 # Вес
+        self.like_dust = False # как песок
+        self.like_water = False # как вода
+        self.temperature = 0 # температура текущая
+        self.temperature_to_fire = None # температура плавления
 
     def set_gravity(self, bool_gravity):
         self.gravity = bool_gravity
@@ -55,3 +55,13 @@ class WaterMaterial(Material):
         self.color_list = [(0, 0, 205), (0, 0, 139)]
         self.color = rd.choice(self.color_list)
         self.gravity = 1
+
+class GasMaterial(Material):
+
+    def __init__(self):
+        super().__init__()
+        self.like_water = True
+        self.weight = 1000
+        self.color_list = [(100, 100, 100), (45, 45, 45)]
+        self.color = rd.choice(self.color_list)
+        self.gravity = 2

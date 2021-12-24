@@ -5,7 +5,7 @@ from copy import deepcopy
 
 class MaterialMenu:
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, parent, material_list):
         pass
 
     def update(self):

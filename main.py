@@ -20,12 +20,6 @@ class Game:
         self.fps = 150
         self.fps_count = 0
 
-        self.material_menu = MaterialMenu(parent=self)
-        self.tools_menu = ToolsMenu(parent=self)
-
-        self.game_board = GameBoard(parent=self, width=50, height=50)
-        self.game_board.set_view(100, 100, self.cell_size)
-
         self.material_cur = 0
         self.material_list = [
             SandMaterial,
@@ -34,6 +28,14 @@ class Game:
         ]
 
         self.choosed_material = self.material_list[self.material_cur]
+
+        self.material_menu = MaterialMenu(parent=self, material_list=self.material_list)
+
+        self.tools_menu = ToolsMenu(parent=self)
+
+        self.game_board = GameBoard(parent=self, width=50, height=50)
+        self.game_board.set_view(100, 100, self.cell_size)
+
 
     def update(self):
         self.material_menu.update()
@@ -55,36 +57,37 @@ class Game:
         pygame.time.set_timer(UPDATE, 50)
 
         running = True
-        left_mouse_button_pressed = False
+        self.left_mouse_button_pressed = False
 
         clock = pygame.time.Clock()
 
         while running:
             # print(self.fps_count)
             self.fps_count += 1
-
-            self.screen.fill(pygame.Color('Black'))
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:  # Выход
                     running = False
                 if event.type == pygame.MOUSEBUTTONDOWN:  #
                     if event.button == 1:
                         # ЛКМ зажата
-                        left_mouse_button_pressed = True
+                        self.left_mouse_button_pressed = True
                         # Обработка ЛКМ
                         self.game_board.get_click(event.pos)
                         self.tools_menu.get_click(event.pos)
                         self.material_menu.get_click(event.pos)
+                    if event.button == 2:
+                        self.update()
+                        self.render()
                     if event.button == 3:
                         self.scroll_material()
                         #self.choosed_material = WaterMaterial if self.choosed_material is SandMaterial else SandMaterial
                 if event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
                         # ЛКМ отжата
-                        left_mouse_button_pressed = False
+                        self.left_mouse_button_pressed = False
 
                 if event.type == pygame.MOUSEMOTION:
-                    if left_mouse_button_pressed:
+                    if self.left_mouse_button_pressed:
                         # ЛКМ удерживается
                         self.game_board.get_click(event.pos)
 
@@ -98,13 +101,15 @@ class Game:
                     self.tools_menu.on_mousewheel(event.y)
                     self.material_menu.on_mousewheel(event.y)
 
-            self.render()
+            # self.render()
             pygame.display.flip()
             clock.tick(self.fps)
 
         pygame.quit()
 
     def render(self):
+
+        self.screen.fill(pygame.Color('Black'))
         self.game_board.render(self.screen)
         self.tools_menu.render(self.screen)
         self.material_menu.render(self.screen)

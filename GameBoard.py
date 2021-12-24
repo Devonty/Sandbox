@@ -57,19 +57,20 @@ class GameBoard:
         self.X = CircleList([0, 1, 1, 1, 0, -1, -1, -1])
         self.Y = CircleList([-1, -1, 0, 1, 1, 1, 0, -1])
         self.J = [
-            (0, self.width, 1),
-            (0, self.width, 1),
             (self.width - 1, -1, -1),
             (self.width - 1, -1, -1),
+            (0, self.width, 1),
+            (0, self.width, 1),
         ]
         self.I = [
-            (self.height - 1, -1, -1),
             (0, self.height, 1),
+            (self.height - 1, -1, -1),
             (self.height - 1, -1, -1),
             (0, self.height, 1),
         ]
 
     def on_mousewheel(self, event_y):
+        return
         self.gravity_direction = (self.gravity_direction + event_y) % 4
 
     def get_cell(self, mouse_pos):
@@ -93,8 +94,10 @@ class GameBoard:
             cell = self.board[y][x]
             if cell.get_material() is None:
                 cell.set_material(self.parent.choosed_material())
-        except Exception:
-            pass
+            elif cell.get_material().weight < self.parent.choosed_material().weight:
+                cell.set_material(self.parent.choosed_material())
+        except Exception as ex:
+            print(ex)
 
     def get_click(self, mouse_pos):
         cell = self.get_cell(mouse_pos)
@@ -102,6 +105,31 @@ class GameBoard:
         if cell is None:
             return None
         self.on_click(cell)
+
+    def make_reaction(self, cell1, cell2, fps_cnt=None):
+        fps_cnt = fps_cnt if fps_cnt is not None else self.parent.fps_count
+
+        material1 = cell1.get_material()
+        material2 = cell2.get_material()
+
+        react1 = material1.reaction_with_material
+        react2 = material2.reaction_with_material
+
+        if material2.__class__ in react1.keys():
+            cl1 = react1[material2.__class__]
+
+            if cl1 is not None:
+                cl1 = cl1()
+
+            cell1.set_material(cl1)
+
+        if material1.__class__ in react2.keys():
+            cl2 = react2[material1.__class__]
+
+            if cl2 is not None:
+                cl2 = cl2()
+
+            cell2.set_material(cl2)
 
     def swap_cells_by_weight(self, cell1, cell2, fps_cnt=None):
         fps_cnt = fps_cnt if fps_cnt is not None else self.parent.fps_count
@@ -119,29 +147,13 @@ class GameBoard:
             cell2.was_moved = fps_cnt
             return True
 
+        self.make_reaction(cell1, cell2)
+
         if material1.weight > material2.weight and material2.like_water:
             cell2.set_material(material1)
             cell1.set_material(material2)
 
             cell1.was_moved = fps_cnt
-            cell2.was_moved = fps_cnt
-            return True
-
-        return False
-
-    def swap_cells(self, cell1, cell2, fps_cnt=None):
-        fps_cnt = fps_cnt if fps_cnt is not None else self.parent.fps_count
-        material1 = cell1.get_material()
-        material2 = cell2.get_material()
-
-        if material1 is None:
-            return False
-
-        if material2 is None:
-            cell2.set_material(material1)
-            cell1.clear()
-
-            cell1.was_moved = 0
             cell2.was_moved = fps_cnt
             return True
 
@@ -153,37 +165,50 @@ class GameBoard:
 
         self.fps_count += 1
         pole = self.board
-        # tmp_pole = deepcopy(self.board)
 
         h = self.height
         w = self.width
 
         beg_i, end_i, step_i = self.I[self.gravity_direction % 4]
         beg_j, end_j, step_j = self.J[self.gravity_direction % 4]
-
-        # print()
-        # print(beg_i, end_i, step_i)
-        # print(beg_j, end_j, step_j)
         fps_cnt = self.parent.fps_count
         for i in range(beg_i, end_i, step_i):
             for j in range(beg_j, end_j, step_j):
                 cell = pole[i][j]
                 material = cell.get_material()
 
-                if cell.was_moved == fps_cnt:
+                if material is None:
                     continue
 
-                if material is None:
+                # Обновление материала
+                material.update()
+                if material.to_kill:
+                    cell.set_material(None)
+                    continue
+
+                if cell.was_moved == fps_cnt:
                     continue
 
                 was_moved_local = cell.was_moved
                 gravity = cell.material.gravity
+                direction = material.direction
 
                 if gravity:
-                    cur = ((self.gravity_direction + max(0, gravity - 1) * 2) % 4 * 2) % 8
+                    cur = ((self.gravity_direction + max(0, gravity - 1) * 2) * 2) % 8
 
                     X = self.X
                     Y = self.Y
+
+                    # Огонь
+                    if material.__class__ is FireMaterial:
+                        if 0 <= i + Y[material.move_direction] < self.height and 0 <= j + X[
+                            material.move_direction] < self.width:
+                            print(material.move_direction)
+                            cell_down = self.board[i + Y[material.move_direction]][
+                                j + X[material.move_direction]]
+                            if self.swap_cells_by_weight(cell, cell_down):
+                                was_moved_local = fps_cnt
+                                continue
 
                     # падение вниз
                     if 0 <= i + Y[cur] < self.height and 0 <= j + X[cur] < self.width:
@@ -191,81 +216,30 @@ class GameBoard:
                         if self.swap_cells_by_weight(cell, cell_down):
                             was_moved_local = fps_cnt
 
-                    # диагональный вниз в пустое место
+                    # диагональный вниз
                     if was_moved_local != fps_cnt and \
                             (material.like_dust or material.like_water):
-
-                        cell_choosen = list()
-
-                        if 0 <= i + Y[cur - 1] < self.height and 0 <= j + X[cur - 1] < self.width:
-                            tmp = self.board[i + Y[cur - 1]][j + X[cur - 1]]
-                            if tmp.get_material() is None:
-                                cell_choosen.append(tmp)
-
-                        if 0 <= i + Y[cur + 1] < self.height and 0 <= j + X[cur + 1] < self.width:
-                            tmp = self.board[i + Y[cur + 1]][j + X[cur + 1]]
-                            if tmp.get_material() is None:
-                                cell_choosen.append(tmp)
-
-                        if cell_choosen:
-                            cell_choosen = rd.choice(cell_choosen)
+                        if 0 <= i + Y[cur + direction] < self.height and \
+                                0 <= j + X[cur + direction] < self.width:
+                            cell_choosen = self.board[i + Y[cur + direction]][
+                                j + X[cur + direction]]
                             # Сдвиг
-                            if self.swap_cells(cell, cell_choosen):
+                            if self.swap_cells_by_weight(cell, cell_choosen):
                                 was_moved_local = fps_cnt
-
                     # горизонтальный вниз
                     if was_moved_local != fps_cnt and material.like_water:
-
-                        cell_choosen = list()
-
-                        if 0 <= i + Y[cur - 2] < self.height and 0 <= j + X[cur - 2] < self.width:
-                            tmp = self.board[i + Y[cur - 2]][j + X[cur - 2]]
-                            if tmp.get_material() is None:
-                                cell_choosen.append(tmp)
-
-                        if 0 <= i + Y[cur + 2] < self.height and 0 <= j + X[cur + 2] < self.width:
-                            tmp = self.board[i + Y[cur + 2]][j + X[cur + 2]]
-                            if tmp.get_material() is None:
-                                cell_choosen.append(tmp)
-
-                        if cell_choosen:
-                            # print(len(cell_choosen))
-                            cell_choosen = rd.choice(cell_choosen)
+                        if 0 <= i + Y[cur + 2 * direction] < self.height and \
+                                0 <= j + X[cur + 2 * direction] < self.width:
+                            cell_choosen = self.board[i + Y[cur + 2 * direction]][
+                                j + X[cur + 2 * direction]]
                             # Сдвиг
-                            if self.swap_cells(cell, cell_choosen):
+                            if self.swap_cells_by_weight(cell, cell_choosen):
                                 was_moved_local = fps_cnt
 
-                    # веса материалов
                     if was_moved_local != fps_cnt:
-                        if 0 <= i + Y[cur] < self.height and 0 <= j + X[cur] < self.width:
-                            cell_down = self.board[i + Y[cur]][j + X[cur]]
-                            if self.swap_cells(cell, cell_down):
-                                was_moved_local = fps_cnt
-
-                            # диагональный вниз
-                            if was_moved_local != fps_cnt and (material.like_dust or material.like_dust):
-
-                                cell_choosen = list()
-
-                                if 0 <= i + Y[cur - 1] < self.height and 0 <= j + X[
-                                    cur - 1] < self.width:
-                                    tmp = self.board[i + Y[cur - 1]][j + X[cur - 1]]
-                                    if tmp.get_material() is None:
-                                        cell_choosen.append(tmp)
-
-                                if 0 <= i + Y[cur + 1] < self.height and 0 <= j + X[
-                                    cur + 1] < self.width:
-                                    tmp = self.board[i + Y[cur + 1]][j + X[cur + 1]]
-                                    if tmp.get_material() is None:
-                                        cell_choosen.append(tmp)
-
-                                if cell_choosen:
-                                    cell_choosen = rd.choice(cell_choosen)
-                                    # Сдвиг
-                                    if self.swap_cells_by_weight(cell, cell_choosen, fps_cnt):
-                                        was_moved_local = fps_cnt
-
-        # self.board = tmp_pole
+                        material.dont_move()
+                        if material.need_to_become_new_material:
+                            cell.set_material(material.to_material())
 
     def render(self, screen):
         self.screen = screen
@@ -280,6 +254,9 @@ class GameBoard:
         pygame.draw.rect(self.screen, pygame.Color('White'), (
             self.left - 1, self.top - 1, 2 + self.width * self.cell_size,
             2 + self.height * self.cell_size), 1)
+
+        # ВРЕМЕННОЕ отображение материала
+        pygame.draw.rect(screen, self.parent.choosed_material().color, (1000, 1000, 10, 10))
 
     # настройка внешнего вида
     def set_view(self, left, top, cell_size):

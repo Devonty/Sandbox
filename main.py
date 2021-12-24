@@ -2,6 +2,7 @@ import pygame
 import math
 import random
 from copy import deepcopy
+import ast
 
 from MaterialMenu import MaterialMenu
 from GameBoard import GameBoard
@@ -12,7 +13,7 @@ from Materials import *
 class Game:
 
     def __init__(self, width=1920, height=1080):
-        self.cell_size = 10
+        self.cell_size = 18
         self.width = width
         self.height = height
         self.size = (width, height)
@@ -25,8 +26,11 @@ class Game:
             SandMaterial,
             WaterMaterial,
             GasMaterial,
+            SeaSaltMaterial,
+            SaltWaterMaterial,
+            FireMaterial,
+            SteamMaterial,
         ]
-
         self.choosed_material = self.material_list[self.material_cur]
 
         self.material_menu = MaterialMenu(parent=self, material_list=self.material_list)
@@ -36,6 +40,13 @@ class Game:
         self.game_board = GameBoard(parent=self, width=50, height=50)
         self.game_board.set_view(100, 100, self.cell_size)
 
+    def get_material_class_list(self, filename = "Materials.py"):
+        with open(filename) as file:
+            node = ast.parse(file.read())
+
+        functions = [n for n in node.body if isinstance(n, ast.FunctionDef)]
+        classes = [n for n in node.body if isinstance(n, ast.ClassDef)]
+        return classes
 
     def update(self):
         self.material_menu.update()
@@ -93,13 +104,23 @@ class Game:
 
                 if event.type == UPDATE:
                     # Событие на обновление
-                    self.update()
+                    # self.update()
                     self.render()
 
                 if event.type == pygame.MOUSEWHEEL:
                     self.game_board.on_mousewheel(event.y)
                     self.tools_menu.on_mousewheel(event.y)
                     self.material_menu.on_mousewheel(event.y)
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_UP:
+                        self.game_board.gravity_direction = 0
+                    elif event.key == pygame.K_RIGHT:
+                        self.game_board.gravity_direction = 1
+                    elif event.key == pygame.K_DOWN:
+                        self.game_board.gravity_direction = 2
+                    elif event.key == pygame.K_LEFT:
+                        self.game_board.gravity_direction = 3
 
             # self.render()
             pygame.display.flip()

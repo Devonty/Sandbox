@@ -13,7 +13,6 @@ from Materials import *
 class Game:
 
     def __init__(self, width=1920, height=1080):
-        self.cell_size = 18
         self.width = width
         self.height = height
         self.size = (width, height)
@@ -30,15 +29,17 @@ class Game:
             SaltWaterMaterial,
             FireMaterial,
             SteamMaterial,
+            LavaMaterial,
         ]
         self.choosed_material = self.material_list[self.material_cur]
 
         self.material_menu = MaterialMenu(parent=self, material_list=self.material_list)
+        self.material_menu.set_view(100, 820, cell_size=75)
 
         self.tools_menu = ToolsMenu(parent=self)
 
-        self.game_board = GameBoard(parent=self, width=50, height=50)
-        self.game_board.set_view(100, 100, self.cell_size)
+        self.game_board = GameBoard(parent=self, width=100, height=50)
+        self.game_board.set_view(100, 100, cell_size=14)
 
     def get_material_class_list(self, filename = "Materials.py"):
         with open(filename) as file:
@@ -103,9 +104,10 @@ class Game:
                         self.game_board.get_click(event.pos)
 
                 if event.type == UPDATE:
+                    pass
                     # Событие на обновление
-                    # self.update()
                     self.render()
+                    self.update()
 
                 if event.type == pygame.MOUSEWHEEL:
                     self.game_board.on_mousewheel(event.y)

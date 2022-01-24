@@ -8,11 +8,12 @@ from SomeUsefulTypes import CircleList
 
 
 class Cell:
-    def __init__(self, material=None, i = 0, j = 0):
+    def __init__(self, material=None, i=0, j=0):
         self.i = i
         self.j = j
         self.material = material
-        self.was_moved = False
+        # Номер кадра, на котором был обработан последний раз
+        self.was_moved = 0
         self.direction = rd.choice([-1, 1])
 
     def set_material(self, new_material):
@@ -28,11 +29,43 @@ class Cell:
         size = (x, y, cell_size, cell_size)
 
         if self.material is not None:
+            # Клетка с цветом материала
             self.material.render(screen, x, y, cell_size)
         else:
+            # Пустая клетка
             pygame.draw.rect(screen, pygame.Color('Black'), size)
 
-        # pygame.draw.rect(screen, pygame.Color('White'), size, 1)
+
+if __name__ == '__main__':
+
+    try:
+        w, hue = map(int, input().split())
+        assert 0 <= w <= 100 and w % 4 == 0 and 0 <= hue <= 360
+    except Exception:
+        print('Неправилный формат данных')
+        quit()
+
+    try:
+        pygame.init()
+        size = width, heigth = 300, 300
+        screen = pygame.display.set_mode(size)
+        pygame.display.set_caption('Куб')
+
+        draw(screen)
+
+        FAN = False  # Заменить на True
+
+        while pygame.event.wait().type != pygame.QUIT:
+            if FAN:
+                hue = (hue + 1) % 360
+                draw(screen)
+            pygame.display.flip()
+
+        pygame.quit()
+    except Exception as ex:
+        print(ex)
+        print('Что-то пошло не так!')
+
 
     def __copy__(self):
         return Cell(self.material)
@@ -52,12 +85,12 @@ class GameBoard:
         self.left = 10
         self.top = 10
         self.fps_count = 0
-        self.board = [[Cell(material=None, i = i, j = j) for j in range(width)] for i in range(height)]
+        self.start_material = SandMaterial
+        self.board = [[Cell(material=None, i=i, j=j) for j in range(width)] for i in range(height)]
         self.screen = None
         self.background_color = pygame.Color('White')
         self.mouse_x = 0
         self.mouse_y = 0
-
 
         self.X = CircleList([0, 1, 1, 1, 0, -1, -1, -1])
         self.Y = CircleList([-1, -1, 0, 1, 1, 1, 0, -1])
@@ -75,7 +108,7 @@ class GameBoard:
         ]
 
     def on_mousewheel(self, event_y):
-        return # отключено
+        return  # отключено
         self.gravity_direction = (self.gravity_direction + event_y) % 4
 
     def get_cell(self, mouse_pos):
@@ -91,16 +124,41 @@ class GameBoard:
         j = x // self.cell_size
         return i, j
 
-    def on_click(self, cord):
+    def get_cord_list(self, cord):
+        pero = self.parent.pero
+        I, J = cord
+        cords = [(I, J)]
+        X = self.X
+        Y = self.Y
+        if pero == 1:
+            pass
+        elif pero == 2:
+            for i in range(4):
+                if 0 <= I + Y[i * 2] < self.height and 0 <= J + X[i * 2] < self.width:
+                    cords.append((I + Y[i * 2], J + X[i * 2]))
+        elif pero == 3:
+            for i in range(8):
+                if 0 <= I + Y[i] < self.height and 0 <= J + X[i] < self.width:
+                    cords.append((I + Y[i], J + X[i]))
+
+        return cords
+
+    def on_click(self, cord_):
         try:
-            if cord is None:
+            if cord_ is None:
                 return None
-            y, x = cord
-            cell = self.board[y][x]
-            if cell.get_material() is None:
-                cell.set_material(self.parent.choosed_material())
-            elif cell.get_material().weight < self.parent.choosed_material().weight:
-                cell.set_material(self.parent.choosed_material())
+
+            for cord in self.get_cord_list(cord_):
+                y, x = cord
+                cell = self.board[y][x]
+                # Ластик
+                if self.parent.choosed_material is None:
+                    cell.clear()
+                # Установка
+                elif cell.get_material() is None:
+                    cell.set_material(self.parent.choosed_material())
+                elif cell.get_material().weight < self.parent.choosed_material().weight:
+                    cell.set_material(self.parent.choosed_material())
         except Exception as ex:
             print(ex)
 
@@ -113,14 +171,13 @@ class GameBoard:
 
     def spawn_on_up_space(self, material, i, j):
         cur = (self.gravity_direction * 2 + 4) % len(self.X)
-        while(self.board[i][j].material is not None):
+        while (self.board[i][j].material is not None):
             i += self.Y[cur]
             j += self.X[cur]
-            if not( 0 <= i + self.Y[cur] < self.height and 0 <= j + self.X[
+            if not (0 <= i + self.Y[cur] < self.height and 0 <= j + self.X[
                 cur] < self.width):
                 return
-        self.board[i][j].set_material(material())
-
+        self.board[i][j].set_material(material)
 
     def make_reaction(self, cell1, cell2, fps_cnt=None):
         fps_cnt = fps_cnt if fps_cnt is not None else self.parent.fps_count
@@ -137,21 +194,34 @@ class GameBoard:
             if material_with.__class__ in react.keys():
                 cl = react[material_with.__class__]
 
-                if cl == DONT_CREATE_NEW_MATERIAL:
-                    cl = material_me
-                    cell.set_material(cl)
-                elif isinstance(cl, list):
+                if isinstance(cl, list):
+                    # Два продукта реакции
                     cl_fir, cl_sec = cl
                     cell.set_material(cl_fir())
-                    self.spawn_on_up_space(cl_sec, cell.i, cell.j)
+                    # Попытка создать второй продукт
+                    material_ = cl_sec()
+                    # Обновление номера кадра, когда обработан материал
+                    material_.was_moved = fps_cnt
+                    self.spawn_on_up_space(material_, cell.i, cell.j)
+                    # Увеличение счетчика реакций
+                    self.parent.react_count += 1
+                    was_reacted = True
                 elif cl is not None:
+
                     cl = cl()
-                    was_reacted = True
-                    cell.set_material(cl)
-                elif cl is None:
-                    was_reacted = True
+                    # Обновление номера кадра, когда обработан материал
+                    cl.was_moved = fps_cnt
                     cell.set_material(cl)
 
+                    # Увеличение счетчика реакций
+                    self.parent.react_count += 1
+                    was_reacted = True
+                elif cl is None:
+                    # Увеличение счетчика реакций
+                    self.parent.react_count += 1
+                    was_reacted = True
+                    # Очистка клетки
+                    cell.clear()
 
         react = react1
         cell = cell1
@@ -176,25 +246,31 @@ class GameBoard:
             return False
 
         if material2 is None:
+            material1.was_moved = fps_cnt
             cell2.set_material(material1)
             cell1.clear()
-
-            material1.was_moved = fps_cnt
             return True
 
-        if self.make_reaction(cell1, cell2):
-            pass
 
         if material1.weight > material2.weight and (
-                (material2.like_water and material1.like_water) or\
+                (material2.like_water and material1.like_water) or \
                 (material2.like_water and material1.like_dust)
-        ):
-            cell2.set_material(material1)
-            cell1.set_material(material2)
+        ) or material1.gravity == 2 and material2.gravity == 1:
+            material1 = cell1.get_material()
+            material2 = cell2.get_material()
 
             material1.was_moved = fps_cnt
             material2.was_moved = fps_cnt
-            return True
+
+            cell2.set_material(material1)
+            cell1.set_material(material2)
+
+        if self.make_reaction(cell1, cell2):
+            if cell1.material is not None:
+                cell1.material.was_moved = fps_cnt
+            if cell2.material is not None:
+                cell2.material.was_moved = fps_cnt
+
 
         return False
 
@@ -208,10 +284,10 @@ class GameBoard:
         h = self.height
         w = self.width
 
-        beg_i, end_i, step_i = self.I[self.gravity_direction % 4]
-        beg_j, end_j, step_j = self.J[self.gravity_direction % 4]
+        beg_i, end_i, step_i = self.I[(self.gravity_direction) % 4]
+        beg_j, end_j, step_j = self.J[(self.gravity_direction) % 4]
         fps_cnt = self.parent.fps_count
-        for k in range(1, 3 + 1):
+        for k in range(4, 4 + 1):
             for i in range(beg_i, end_i, step_i):
                 for j in range(beg_j, end_j, step_j):
                     cell = pole[i][j]
@@ -222,15 +298,14 @@ class GameBoard:
 
                     # Обновление материала
                     material.update()
+                    if material.need_to_become_new_material:
+                        cell.set_material(material.to_material())
+                        cell.material.was_moved = fps_cnt
+                        continue
 
                     if material.to_kill:
                         cell.set_material(None)
                         continue
-
-                    if material.need_to_become_new_material:
-                        cell.set_material(material.to_material())
-                        continue
-
 
                     if material.was_moved == fps_cnt:
                         continue
@@ -260,7 +335,6 @@ class GameBoard:
                                 cell_down = self.board[i + Y[cur]][j + X[cur]]
                                 self.swap_cells_by_weight(cell, cell_down)
 
-
                         # диагональный вниз
                         if material.was_moved != fps_cnt and \
                                 (material.like_dust or material.like_water) and k >= 2:
@@ -279,10 +353,10 @@ class GameBoard:
                                 # Сдвиг
                                 self.swap_cells_by_weight(cell, cell_choosen)
 
-                    if material.was_moved != fps_cnt:
-                        material.dont_move()
-                        if material.need_to_become_new_material:
-                            cell.set_material(material.to_material())
+                        if material.was_moved != fps_cnt and k == 4:
+                            material.dont_move()
+                            # if material.need_to_become_new_material:
+                            #    cell.set_material(material.to_material())
 
     def render(self, screen):
         self.screen = screen
@@ -299,7 +373,7 @@ class GameBoard:
             2 + self.height * self.cell_size), 1)
 
         # ВРЕМЕННОЕ отображение материала
-        pygame.draw.rect(screen, self.parent.choosed_material().color, (1000, 1000, 10, 10))
+        # pygame.draw.rect(screen, self.parent.choosed_material().color, (1000, 1000, 10, 10))
 
     # настройка внешнего вида
     def set_view(self, left, top, cell_size):

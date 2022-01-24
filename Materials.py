@@ -3,6 +3,7 @@ import pygame
 
 DONT_CREATE_NEW_MATERIAL = ("Key_to_not_change")
 
+
 # родителький класс
 class Material:
 
@@ -18,16 +19,17 @@ class Material:
         self.temperature_to_kill = None
         self.reaction_with_material = dict()
         self.move_direction = rd.randint(0, 7)
+        self.name_tag = "Name"
         # СЛУЖЕБНЫЕ! Инициализируются, но не влияют на свойства материала.
         # Нужны для обработки и упрощения физики
         self.direction = rd.choice([-1, 1])
         self.to_kill = False
         self.need_to_become_new_material = False
         self.to_material = None
-        self.was_moved = True
+        self.was_moved = -1
 
     def dont_move(self):
-        self.direction = -self.direction
+        self.direction = self.direction * (-1) ** rd.randint(1, 2)
 
     def update(self):
         pass
@@ -74,9 +76,10 @@ class SandMaterial(Material):
         self.temperature = 0
         self.temperature_to_fire = None
         self.reaction_with_material = {
-            FireMaterial : LiedGlassMaterial,
-            LavaMaterial : LiedGlassMaterial,
+            FireMaterial: LiedGlassMaterial,
+            LavaMaterial: LiedGlassMaterial,
         }
+        self.name_tag = "Песок"
 
 
 class WaterMaterial(Material):
@@ -93,6 +96,7 @@ class WaterMaterial(Material):
             FireMaterial: SteamMaterial,
             LavaMaterial: SteamMaterial
         }
+        self.name_tag = "Вода"
 
 
 class GasMaterial(Material):
@@ -106,8 +110,9 @@ class GasMaterial(Material):
         self.gravity = 2
         self.reaction_with_material = {
             FireMaterial: FireMaterial,
-
+            LavaMaterial: FireMaterial
         }
+        self.name_tag = "Метан"
 
 
 class SeaSaltMaterial(Material):
@@ -125,6 +130,7 @@ class SeaSaltMaterial(Material):
         self.reaction_with_material = {
             WaterMaterial: None
         }
+        self.name_tag = "Соль"
 
 
 class SaltWaterMaterial(Material):
@@ -143,6 +149,7 @@ class SaltWaterMaterial(Material):
             FireMaterial: [SeaSaltMaterial, SteamMaterial],
             LavaMaterial: [SeaSaltMaterial, SteamMaterial]
         }
+        self.name_tag = "Соленая вода"
 
 
 class FireMaterial(Material):
@@ -164,8 +171,8 @@ class FireMaterial(Material):
             WaterMaterial: None,
             SandMaterial: None,
             SaltWaterMaterial: None,
-            GasMaterial: DONT_CREATE_NEW_MATERIAL ,
         }
+        self.name_tag = "Огонь"
 
     def update(self):
         self.temperature -= 16
@@ -189,10 +196,16 @@ class SteamMaterial(Material):
         self.temperature_to_fire = None  # температура плавления
         # Словарь реакций (Если я задену Material, то стану newMaterial (Material : newMaterial))
         self.reaction_with_material = dict()
+        self.name_tag = "Пар"
 
     def dont_move(self):
-        self.need_to_become_new_material = True
-        self.to_material = WaterMaterial
+        if self.was_moved != -1:
+            self.need_to_become_new_material = True
+            self.to_material = WaterMaterial
+
+    def cancel_dont_move(self):
+        self.need_to_become_new_material = False
+        self.to_material = None
 
 
 class LavaMaterial(Material):
@@ -210,15 +223,16 @@ class LavaMaterial(Material):
         self.temperature_to_kill = 0
         # Словарь реакций (Если я задену Material, то стану newMaterial (Material : newMaterial))
         self.reaction_with_material = {
-            WaterMaterial: DONT_CREATE_NEW_MATERIAL
         }
+        self.name_tag = "Лава"
 
     def update(self):
-        self.temperature -= 6
+        self.temperature -= rd.randint(6, 11)
         if self.temperature_to_kill is not None:
             if self.temperature <= self.temperature_to_kill:
                 self.need_to_become_new_material = True
-                self.to_material = FireMaterial
+                self.to_material = StoneMaterial
+
 
 class LiedGlassMaterial(Material):
 
@@ -227,10 +241,78 @@ class LiedGlassMaterial(Material):
         self.color_list = [(255, 255, 255)]  # Список цветов
         self.color = rd.choice(self.color_list)  # случайный цвет
         self.gravity = 1  # 0 - no gravity, 1 - down, 2 - up (gas)
-        self.weight = 1777  # Вес
+        self.weight = 1500  # Вес
         self.like_dust = True  # как песок
         self.like_water = True  # как вода
+        self.temperature = 3000  # температура текущая
+        self.temperature_to_fire = 1550  # температура плавления
+        # Словарь реакций (Если я задену Material, то стану newMaterial (Material : newMaterial))
+        self.reaction_with_material = dict()
+        self.name_tag = "Жидкое стекло"
+
+    def update(self):
+        self.temperature -= rd.randint(6, 11)
+        if self.temperature_to_kill is not None:
+            if self.temperature <= self.temperature_to_kill:
+                self.need_to_become_new_material = True
+                self.to_material = GlassMaterial
+        if self.temperature_to_fire is not None:
+            if self.temperature <= self.temperature_to_fire:
+                self.need_to_become_new_material = True
+                self.to_material = GlassMaterial
+
+
+class SteelMaterial(Material):
+
+    def __init__(self, temperature=None):
+        super().__init__()
+        self.color_list = [(168, 169, 173)]  # Список цветов
+        self.color = rd.choice(self.color_list)  # случайный цвет
+        self.gravity = 0  # 0 - no gravity, 1 - down, 2 - up (gas)
+        self.weight = 7850  # Вес
+        self.like_dust = False  # как песок
+        self.like_water = False  # как вода
         self.temperature = 0  # температура текущая
         self.temperature_to_fire = None  # температура плавления
         # Словарь реакций (Если я задену Material, то стану newMaterial (Material : newMaterial))
         self.reaction_with_material = dict()
+        self.name_tag = "Сталь"
+
+
+class GlassMaterial(Material):
+
+    def __init__(self, temperature=None):
+        super().__init__()
+        self.color_list = [("#c9dce2")]  # Список цветов
+        self.color = rd.choice(self.color_list)  # случайный цвет
+        self.gravity = 0  # 0 - no gravity, 1 - down, 2 - up (gas)
+        self.weight = 2200  # Вес
+        self.like_dust = False  # как песок
+        self.like_water = False  # как вода
+        self.temperature = 0  # температура текущая
+        self.temperature_to_fire = None  # температура плавления
+        # Словарь реакций (Если я задену Material, то стану newMaterial (Material : newMaterial))
+        self.reaction_with_material = {
+            FireMaterial: LiedGlassMaterial,
+            LavaMaterial: LiedGlassMaterial
+        }
+        self.name_tag = "Стекло"
+
+
+class StoneMaterial(Material):
+
+    def __init__(self, temperature=None):
+        super().__init__()
+        self.color_list = [(145, 155, 150), (125, 130, 130)]  # Список цветов
+        self.color = rd.choice(self.color_list)  # случайный цвет
+        self.gravity = 0  # 0 - no gravity, 1 - down, 2 - up (gas)
+        self.weight = 2200  # Вес
+        self.like_dust = False  # как песок
+        self.like_water = False  # как вода
+        self.temperature = 0  # температура текущая
+        self.temperature_to_fire = None  # температура плавления
+        # Словарь реакций (Если я задену Material, то стану newMaterial (Material : newMaterial))
+        self.reaction_with_material = {
+            FireMaterial: LavaMaterial,
+        }
+        self.name_tag = "Камень"

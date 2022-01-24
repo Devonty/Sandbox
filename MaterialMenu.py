@@ -24,6 +24,9 @@ class Cell:
         params = (self.x, self.y, self.cell_size, self.cell_size)
         pygame.draw.rect(screen, color, params)
 
+        font = pygame.font.Font(None, 17)
+        text = font.render(self.material().name_tag, True, (100, 255, 100))
+        screen.blit(text, (self.x, self.y + self.cell_size))
 
 class MaterialMenu:
 
@@ -46,11 +49,11 @@ class MaterialMenu:
 
         self.pole = list()
         for material in self.material_list:
-            self.pole.append(Cell(now_x, now_y, material))
-            now_x += step
-            if now_x >= self.left + self.width:
+            if now_x + self.cell_size + self.split_space >= self.left + self.width:
                 now_x = self.split_space // 2 + self.left
                 now_y += step
+            self.pole.append(Cell(now_x, now_y, material))
+            now_x += step
 
     def update(self):
         pass
